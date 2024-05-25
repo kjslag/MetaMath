@@ -26,6 +26,7 @@ from transformers import Trainer
 import argparse
 import json
 import random;random.seed(42)
+from datasets import load_dataset
 
 def _make_r_io_base(f, mode: str):
     if not isinstance(f, io.IOBase):
@@ -64,7 +65,7 @@ class ModelArguments:
 
 @dataclass
 class DataArguments:
-    data_path: str = field(default=None, metadata={"help": "Path to the training data."})
+    data_path: str = field(default="hf:meta-math/MetaMathQA", metadata={"help": "Path to the training data."})
 
 
 @dataclass
@@ -155,16 +156,17 @@ class SupervisedDataset(Dataset):
         super(SupervisedDataset, self).__init__()
         logging.warning("Loading data...")
         data_path = data_args.data_path
-        try:
-            data_path = data_path_map[data_path]
-        except:
-            data_path = data_path
-        try:
-            list_data_dict = jload(data_path)
-        except BaseException:
-            with open(data_path, 'r') as f:
-                lines = f.readlines()
-            list_data_dict = [json.loads(line.strip()) for line in lines]
+
+        if data_path.starts_with("hf:"):
+            dataset = load_dataset(data_path[3:])
+            list_data_dict = dataset["train"]
+        else:
+            try:
+                list_data_dict = jload(data_path)
+            except BaseException:
+                with open(data_path, 'r') as f:
+                    lines = f.readlines()
+                list_data_dict = [json.loads(line.strip()) for line in lines]
 
         list_data_dict = random.sample(list_data_dict,  len(list_data_dict))
         list_data_dict = list_data_dict[:data_args.data_length]
@@ -175,11 +177,12 @@ class SupervisedDataset(Dataset):
         if 'instruction' in list_data_dict[0]:
             pass
         else:
-            def get_input(query):
-                if query.find('\n') == -1:
-                    return ''
-                return '\n'.join(query.split('\n')[1:])
-            list_data_dict = [{'instruction':data['query'].split('\n')[0], 'input':get_input(data['query']), 'output':data['response']} for data in list_data_dict]
+            # def get_input(query):
+            #     if query.find('\n') == -1:
+            #         return ''
+            #     return '\n'.join(query.split('\n')[1:])
+            # list_data_dict = [{'instruction':data['query'].split('\n')[0], 'input':get_input(data['query']), 'output':data['response']} for data in list_data_dict]
+            list_data_dict = [{'instruction':data['query'], 'output':data['response']} for data in list_data_dict]
         # import ipdb; ipdb.set_trace()
         sources = [
             prompt_input.format_map(example) if example.get("input", "") != "" else prompt_no_input.format_map(example)
