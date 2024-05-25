@@ -157,7 +157,7 @@ class SupervisedDataset(Dataset):
         logging.warning("Loading data...")
         data_path = data_args.data_path
 
-        if data_path.starts_with("hf:"):
+        if data_path.startswith("hf:"):
             dataset = load_dataset(data_path[3:])
             list_data_dict = dataset["train"]
         else:
