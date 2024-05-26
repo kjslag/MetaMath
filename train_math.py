@@ -159,7 +159,7 @@ class SupervisedDataset(Dataset):
 
         if data_path.startswith("hf:"):
             dataset = load_dataset(data_path[3:])
-            list_data_dict = dataset["train"]
+            list_data_dict = list(dataset["train"])
         else:
             try:
                 list_data_dict = jload(data_path)
